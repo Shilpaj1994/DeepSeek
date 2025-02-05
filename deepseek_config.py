@@ -32,7 +32,7 @@ class DeepSeekConfig:
     vocab_size: int = 49152        # vocabulary size
     n_layer: int = 30              # number of transformer layers
     num_attention_heads: int = 9   # number of attention heads
-    hidden_size: int = 576         # embedding dimension
+    hidden_size: int = 768         # embedding dimension
     mlp_ratio: float = 2.67        # Based on MLP implementation (1536/576)
     dropout: float = 0.0           # No dropout used in implementation
     
@@ -55,11 +55,11 @@ class DeepSeekConfig:
     # Generation parameters
     context_length: int = 10      # Number of tokens to use as context
     temperature: float = 1.0      # Sampling temperature
-    top_k: int = 50              # Top-k sampling parameter
+    top_k: int = 2              # Top-k sampling parameter
     
     # New MoE parameters
-    num_shared_experts: int = 2
-    compression_ratio: int = 4
+    num_shared_experts: int = 1
+    compression_ratio: int = 8
     
     # Latent attention config
     latent_attention_config: LatentAttentionConfig = field(default_factory=LatentAttentionConfig)
