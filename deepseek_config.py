@@ -62,7 +62,7 @@ class DeepSeekConfig:
     compression_ratio: int = 4
     
     # Latent attention config
-    latent_attention_config: LatentAttentionConfig = LatentAttentionConfig()
+    latent_attention_config: LatentAttentionConfig = field(default_factory=LatentAttentionConfig)
 
 
 @dataclass
