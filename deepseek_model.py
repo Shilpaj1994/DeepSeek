@@ -24,8 +24,8 @@ class LatentAttention(nn.Module):
         self.scaling_factor = config.scaling_factor
         
         # Rotary embeddings with scaling
-        self.inv_freq = 1.0 / (self.base ** (torch.arange(0, kv_dim, 2).float() / kv_dim))
-        self.register_buffer('inv_freq', self.inv_freq)
+        inv_freq = 1.0 / (self.base ** (torch.arange(0, kv_dim, 2).float() / kv_dim))
+        self.register_buffer('inv_freq', inv_freq)
         
     def _apply_rope(self, x, seq_len):
         t = torch.arange(seq_len, device=x.device).type_as(self.inv_freq)
