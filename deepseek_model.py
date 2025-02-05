@@ -208,12 +208,12 @@ class DeepSeekLM(nn.Module):
         self.config = config
         
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(config.vocab_size, config.n_embd),
+            wte = nn.Embedding(config.vocab_size, config.hidden_size),
             h = nn.ModuleList([DeepSeekBlock(config) for _ in range(config.n_layer)]),
-            ln_f = nn.LayerNorm(config.n_embd, bias=False),
+            ln_f = nn.LayerNorm(config.hidden_size, bias=False),
         ))
         
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # weight sharing
         self.transformer.wte.weight = self.lm_head.weight
@@ -243,7 +243,7 @@ class DeepSeekLM(nn.Module):
         B, T = idx.size()
         assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is only {self.config.block_size}"
         # forward the token and posisition embeddings
-        tok_emb = self.transformer.wte(idx) # token embeddings of shape (B, T, n_embd)
+        tok_emb = self.transformer.wte(idx) # token embeddings of shape (B, T, hidden_size)
         x = tok_emb
         # forward the blocks of the transformer
         for block in self.transformer.h:
