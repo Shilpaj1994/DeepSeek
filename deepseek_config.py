@@ -31,7 +31,7 @@ class DeepSeekConfig:
     block_size: int = 2048         # max sequence length 
     vocab_size: int = 49152        # vocabulary size
     n_layer: int = 30              # number of transformer layers
-    num_attention_heads: int = 9   # number of attention heads
+    num_attention_heads: int = 8   # number of attention heads
     hidden_size: int = 768         # embedding dimension
     mlp_ratio: float = 2.67        # Based on MLP implementation (1536/576)
     dropout: float = 0.0           # No dropout used in implementation
