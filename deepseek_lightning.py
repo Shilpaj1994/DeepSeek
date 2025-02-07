@@ -315,15 +315,19 @@ class LitDeepSeekLM(pl.LightningModule):
                 module.update_bias_terms(module.expert_load)
 
     def on_train_batch_end(self, outputs, batch, batch_idx):
-        """Update biases after gradient step"""
-        # Only update every 100 steps to match reference frequency
+        """Matches reference update pattern"""
+        # Update every 100 steps to prevent over-adjustment
         if self.global_step % 100 == 0:
             with torch.no_grad():
                 for module in self.model.modules():
                     if isinstance(module, DeepSeekMoE):
                         if module.expert_load is not None:
-                            module.update_bias_terms(module.expert_load)
-                            module.expert_load = None  # Reset for next batch
+                            # Use synchronized expert load
+                            expert_load = module.expert_load.detach()
+                            # Apply reference update rule
+                            module.update_bias_terms(expert_load)
+                            # Reset for next batch
+                            module.expert_load = None
 
 def plot_learning_rate(log_dir):
     """

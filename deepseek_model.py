@@ -132,32 +132,33 @@ class DeepSeekMoE(nn.Module):
         
         # Routing
         self.router = nn.Linear(self.hidden_size, self.num_experts - self.num_shared, bias=False)
-        self.register_parameter('routing_bias', nn.Parameter(torch.zeros(self.num_experts - self.num_shared)))
-
-        self.expert_load = None  # Track expert utilization
+        self.routing_bias = nn.Parameter(torch.zeros(self.num_experts - self.num_shared))
+        self.expert_load = None
 
     def forward(self, x):
         # Shared experts
         shared_out = sum(expert(x) for expert in self.shared_experts) / self.num_shared
         
-        # Routing
+        # Calculate routing probabilities (EXACT reference implementation)
         routing_logits = self.router(x) + self.routing_bias
         routing_probs = torch.sigmoid(routing_logits)
-        scores, indices = torch.topk(routing_probs, self.top_k, dim=-1)
+        _, indices = torch.topk(routing_probs, self.top_k, dim=-1)
         
-        # Calculate expert load (EXACT reference implementation)
+        # Initialize expert load tensor
         self.expert_load = torch.zeros(
-            len(self.routed_experts), 
-            device=x.device
+            self.num_experts - self.num_shared,
+            device=x.device,
+            dtype=torch.float32
         )
-        batch_size, seq_len = x.size(0), x.size(1)
         
+        # Calculate expert load (matches reference exactly)
+        batch_size, seq_len = x.size(0), x.size(1)
         for k in range(self.top_k):
             current_indices = indices[..., k]
-            for i in range(len(self.routed_experts)):
-                self.expert_load[i] += (current_indices == i).sum()
+            for expert_idx in range(self.num_experts - self.num_shared):
+                self.expert_load[expert_idx] += (current_indices == expert_idx).sum()
 
-        # Normalize by total possible assignments
+        # Normalize as in reference code
         self.expert_load /= (batch_size * seq_len * self.top_k)
 
         # Expert processing
@@ -168,7 +169,7 @@ class DeepSeekMoE(nn.Module):
                 mask = (expert_mask == expert_idx)
                 if mask.any():
                     expert_out = self.routed_experts[expert_idx](x[mask])
-                    out[mask] += expert_out * scores[mask][..., None]
+                    out[mask] += expert_out * routing_probs[mask][..., None]
         
         return shared_out + out
 
@@ -176,7 +177,8 @@ class DeepSeekMoE(nn.Module):
         """EXACT reference implementation of bias update"""
         target_load = 1.0 / len(self.routed_experts)
         load_diff = expert_load - target_load
-        self.routing_bias.data -= 0.1 * load_diff
+        with torch.no_grad():
+            self.routing_bias.data -= 0.1 * load_diff
 
 
 class MOEFeedForward(nn.Module):
