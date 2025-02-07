@@ -56,16 +56,18 @@ class MultiHeadLatentAttention(nn.Module):
         self.compression_ratio = config.compression_ratio
         self.latent_dim = self.hidden_size // self.compression_ratio
 
-        # Projection layers
+        # Projection layers with exact dimension matching
         self.kv_proj_d = nn.Linear(self.hidden_size, self.latent_dim, bias=False)
         self.q_proj_d = nn.Linear(self.hidden_size, self.latent_dim, bias=False)
-        self.k_proj_u = nn.Linear(self.latent_dim, self.head_dim, bias=False)
-        self.q_proj_u = nn.Linear(self.latent_dim, self.head_dim, bias=False)
-        self.v_proj_u = nn.Linear(self.latent_dim, self.hidden_size, bias=False)
         
-        # Rotary components
-        self.rope_k = nn.Linear(self.hidden_size, self.head_dim, bias=False)
-        self.rope_q = nn.Linear(self.latent_dim, self.head_dim, bias=False)
+        # Decompression projections must output exactly num_heads * head_dim
+        self.k_proj_u = nn.Linear(self.latent_dim, self.num_heads * self.head_dim, bias=False)
+        self.q_proj_u = nn.Linear(self.latent_dim, self.num_heads * self.head_dim, bias=False)
+        self.v_proj_u = nn.Linear(self.latent_dim, self.num_heads * self.head_dim, bias=False)
+
+        # Rotary embeddings
+        self.rope_q = nn.Linear(self.latent_dim, self.latent_dim // 2, bias=False)
+        self.rope_k = nn.Linear(self.hidden_size, self.latent_dim // 2, bias=False)
         self.rotary_emb = LatentAttention(self.head_dim, self.head_dim, config.latent_attention_config)
 
         self.o_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
@@ -77,15 +79,19 @@ class MultiHeadLatentAttention(nn.Module):
         kv_latent = self.kv_proj_d(x)
         q_latent = self.q_proj_d(x)
         
-        # Decompress projections
+        # Decompress with exact dimension matching
         k = self.k_proj_u(kv_latent).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         q = self.q_proj_u(q_latent).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj_u(kv_latent).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         
-        # Rotary embeddings
-        q_rot = self.rope_q(q_latent).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
-        k_rot = self.rope_k(x).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
-        q, k = self.rotary_emb(q_rot, k_rot)
+        # Apply rotary embeddings to first half of the dimension
+        q_rot = self.rope_q(q_latent).view(B, T, self.num_heads, self.latent_dim // 4).transpose(1, 2)
+        k_rot = self.rope_k(x).view(B, T, self.num_heads, self.latent_dim // 4).transpose(1, 2)
+        q_rot, k_rot = self.rotary_emb(q_rot, k_rot)
+        
+        # Combine rotary and static dimensions
+        q = torch.cat([q_rot, q[..., self.latent_dim // 4:]], dim=-1)
+        k = torch.cat([k_rot, k[..., self.latent_dim // 4:]], dim=-1)
 
         # Attention with compressed KV
         y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
