@@ -28,6 +28,12 @@ class LatentAttention(nn.Module):
         # Rotary embeddings with scaling
         inv_freq = 1.0 / (self.base ** (torch.arange(0, kv_dim, 2).float() / kv_dim))
         self.register_buffer('inv_freq', inv_freq)
+    
+    def _rotate_half(self, x):
+        """Rotates half the hidden dims of the input."""
+        x1 = x[..., :x.shape[-1] // 2]
+        x2 = x[..., x.shape[-1] // 2:]
+        return torch.cat((-x2, x1), dim=-1)
         
     def _apply_rope(self, x, seq_len):
         t = torch.arange(seq_len, device=x.device).type_as(self.inv_freq)
