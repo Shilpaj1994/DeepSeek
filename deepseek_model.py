@@ -149,14 +149,23 @@ class DeepSeekMoE(nn.Module):
         self.expert_load = None
 
     def forward(self, x):
+        # Get input shape
+        original_shape = x.shape
+        x = x.view(-1, self.hidden_size)  # Reshape to (batch_size * seq_len, hidden_size)
+
         # Shared experts
         shared_out = sum(expert(x) for expert in self.shared_experts) / self.num_shared
         
-        # Calculate routing probabilities (EXACT reference implementation)
+        # Calculate routing probabilities
         routing_logits = self.router(x) + self.routing_bias
         routing_probs = torch.sigmoid(routing_logits)
-        _, indices = torch.topk(routing_probs, self.top_k, dim=-1)
         
+        # Get top-k experts
+        top_k_probs, indices = torch.topk(routing_probs, self.top_k, dim=-1)
+        
+        # Normalize probabilities
+        top_k_probs = top_k_probs / top_k_probs.sum(dim=-1, keepdim=True)
+
         # Initialize expert load tensor
         self.expert_load = torch.zeros(
             self.num_experts - self.num_shared,
@@ -164,30 +173,35 @@ class DeepSeekMoE(nn.Module):
             dtype=torch.float32
         )
         
-        # Calculate expert load (matches reference exactly)
-        batch_size, seq_len = x.size(0), x.size(1)
+        # Calculate expert load
         for k in range(self.top_k):
-            current_indices = indices[..., k]
+            current_indices = indices[:, k]
             for expert_idx in range(self.num_experts - self.num_shared):
-                self.expert_load[expert_idx] += (current_indices == expert_idx).sum()
+                self.expert_load[expert_idx] += (current_indices == expert_idx).float().mean()
 
-        # Normalize as in reference code
-        self.expert_load /= (batch_size * seq_len * self.top_k)
+        # Normalize expert load
+        self.expert_load /= self.top_k
 
         # Expert processing
         out = torch.zeros_like(x)
         for k in range(self.top_k):
-            expert_mask = indices[..., k]
+            expert_indices = indices[:, k]
+            probs = top_k_probs[:, k]
+            
+            # Process each expert
             for expert_idx in range(len(self.routed_experts)):
-                mask = (expert_mask == expert_idx)
+                mask = (expert_indices == expert_idx)
                 if mask.any():
-                    expert_out = self.routed_experts[expert_idx](x[mask])
-                    out[mask] += expert_out * routing_probs[mask][..., None]
-        
-        return shared_out + out
+                    expert_input = x[mask]
+                    expert_output = self.routed_experts[expert_idx](expert_input)
+                    out[mask] += expert_output * probs[mask, None]
+
+        # Combine outputs and reshape back
+        combined_out = (shared_out + out).view(original_shape)
+        return combined_out
 
     def update_bias_terms(self, expert_load):
-        """EXACT reference implementation of bias update"""
+        """Update routing biases based on expert load"""
         target_load = 1.0 / len(self.routed_experts)
         load_diff = expert_load - target_load
         with torch.no_grad():
