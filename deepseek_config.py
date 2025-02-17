@@ -15,8 +15,9 @@ class LatentAttentionConfig:
     """
     base: int = 10000                # Base for the angle calculations
     scaling_factor: float = 1.0      # Scaling factor for rotary embeddings
-    head_dim_fraction: float = 0.3125  # Set to get exactly kv_dim=24 (216 total)
+    head_dim_fraction: float = 0.25  # Adjusted to ensure dimensions match
     round_multiple: int = 8          # Round kv_dim to nearest multiple of this number
+    rotary_dim_fraction: float = 0.5  # Added: fraction of head_dim to apply rotary to
 
 
 @dataclass
@@ -32,6 +33,7 @@ class DeepSeekConfig:
     n_layer: int = 8               # number of transformer layers
     num_attention_heads: int = 8   # number of attention heads
     hidden_size: int = 768         # embedding dimension
+    head_dim: int = 96            # Added: explicit head dimension (hidden_size // num_attention_heads)
     mlp_ratio: float = 2.67        # Based on MLP implementation (1536/576)
     dropout: float = 0.0           # No dropout used in implementation
     
