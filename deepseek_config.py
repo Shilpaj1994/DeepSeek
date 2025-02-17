@@ -27,7 +27,6 @@ class DeepSeekConfig:
     # Model configuration
     num_experts: int = 8
     expert_capacity: int = 64
-    top_k: int = 4
     block_size: int = 2048         # max sequence length 
     vocab_size: int = 49152        # vocabulary size
     n_layer: int = 8               # number of transformer layers

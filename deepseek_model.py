@@ -86,14 +86,14 @@ class MultiHeadLatentAttention(nn.Module):
         q = self.q_proj_u(q_latent).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj_u(kv_latent).view(B, T, self.num_heads, self.head_dim).transpose(1, 2)
         
-        # Apply rotary embeddings to first half of the dimension
-        q_rot = self.rope_q(q_latent).view(B, T, self.num_heads, self.latent_dim // 4).transpose(1, 2)
-        k_rot = self.rope_k(x).view(B, T, self.num_heads, self.latent_dim // 4).transpose(1, 2)
+        # Apply rotary embeddings - Fixed reshape dimensions
+        q_rot = self.rope_q(q_latent).view(B, T, self.num_heads, -1).transpose(1, 2)  # Let view infer last dimension
+        k_rot = self.rope_k(x).view(B, T, self.num_heads, -1).transpose(1, 2)  # Let view infer last dimension
         q_rot, k_rot = self.rotary_emb(q_rot, k_rot)
         
         # Combine rotary and static dimensions
-        q = torch.cat([q_rot, q[..., self.latent_dim // 4:]], dim=-1)
-        k = torch.cat([k_rot, k[..., self.latent_dim // 4:]], dim=-1)
+        q = torch.cat([q_rot, q[..., q_rot.size(-1):]], dim=-1)  # Use dynamic sizing
+        k = torch.cat([k_rot, k[..., k_rot.size(-1):]], dim=-1)  # Use dynamic sizing
 
         # Attention with compressed KV
         y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
