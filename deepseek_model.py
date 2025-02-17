@@ -15,7 +15,9 @@ from deepseek_config import DeepSeekConfig, LatentAttentionConfig
 
 
 class LatentAttention(nn.Module):
-    """Modified RoPE implementation for latent attention"""
+    """
+    Modified RoPE implementation for latent attention
+    """
     def __init__(self, head_dim, kv_dim, config: LatentAttentionConfig):
         super().__init__()
         self.head_dim = head_dim
