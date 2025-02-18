@@ -6,9 +6,9 @@ In this project, I have recreated the Deepseek v3 architecture. In one of my pre
 
 ## MultiHead Latent Attention
 
-![MHLA](https://planetbanatt.net/images/mla/mla.mp4)
+![MHLA](./assets/mhla.gif)
 
-Source - https://planetbanatt.net/articles/mla.html
+ 												Source - https://planetbanatt.net/articles/mla.html
 
 Starting with MultiHeadLatentAttention. Looking at the class, it initializes with a hidden size, number of heads, and compression ratio. The latent_dim is hidden_size divided by compression_ratio, which suggests they're compressing the key and value projections. There are two sets of projections: kv_proj_d and q_proj_d for compression, then k_proj_u, q_proj_u, v_proj_u for decompression. The RoPE (Rotary Positional Embedding) components are applied to parts of the queries and keys.
 
@@ -225,4 +225,81 @@ This implementation captures DeepSeek's key innovations:
 
 
 ## Training Details
+
+
+
+### Training Logs
+
+```
+step 9500 | loss: 5.1068 | dt: 205.39ms | tok/sec: 3852.88
+GPU Memory: 5.86GB / 6.04GB
+
+step 9550 | loss: 4.0633 | dt: 173.45ms | tok/sec: 3934.90
+GPU Memory: 5.48GB / 5.51GB
+
+step 9600 | loss: 4.8030 | dt: 178.11ms | tok/sec: 4142.49
+GPU Memory: 5.58GB / 5.62GB
+
+step 9650 | loss: 4.4450 | dt: 173.44ms | tok/sec: 4030.17
+GPU Memory: 5.29GB / 5.36GB
+
+step 9700 | loss: 4.0842 | dt: 177.04ms | tok/sec: 4275.76
+GPU Memory: 5.42GB / 5.45GB
+
+step 9750 | loss: 4.2598 | dt: 239.85ms | tok/sec: 3955.86
+GPU Memory: 5.19GB / 5.28GB
+
+step 9800 | loss: 4.2879 | dt: 162.08ms | tok/sec: 4308.44
+GPU Memory: 5.01GB / 5.18GB
+
+step 9850 | loss: 5.1025 | dt: 175.22ms | tok/sec: 4155.82
+GPU Memory: 5.52GB / 5.57GB
+
+step 9900 | loss: 4.5045 | dt: 187.34ms | tok/sec: 3960.34
+GPU Memory: 5.37GB / 5.48GB
+
+step 9950 | loss: 5.2817 | dt: 171.27ms | tok/sec: 3936.73
+GPU Memory: 5.25GB / 5.33GB
+
+Validation - loss: 4.7128 | dt: 179.87ms
+```
+
+
+
+
+
+### Sample Output
+
+```
+Prompt: Once upon a time
+Generated: Once upon a time, in a small town named Harmonyville, lived two best friends - Timmy the Mr. Johnson, Timmy the Turtle, the Tortoise, the professor, and Benny the Scientist, they decided to share their thoughts with the park. One day, they heard some exciting news!
+
+Curious about all the different stories they met "I'm one of a little town. When they entered, they could visit the park to watch new things like where they come from all the animals they would get better and better
+--------------------------------------------------
+
+Prompt: The future of artificial intelligence
+Generated: The future of artificial intelligence, a special tool that provides an in high-quality design, and converting it into manageable parts. This is characterized by its high vision of a suitable area of materials available to a set of advantages and limitations. It is used to apply this method to play in the field of online gaming. By the end of this unit, you will be able to optimize this new language.
+
+### Step 1: Understanding Your Body
+
+To begin exploring the basics of BHS, let's first understand
+--------------------------------------------------
+
+Prompt: In the distant galaxy
+Generated: In the distant galaxy, the bustling city of Stell, the U. Captain was always eager to become a prominent figure, who had been passionate about his friendship with a place in Canada. He had been the first few years, but she couldn't help but think about all the world around him.
+
+"Hey, what do you know?" asked Polly. "The rhythm of the Way of Post-Just like many people because people can't want them to meet. One day, they shared a crucial role in
+--------------------------------------------------
+
+Prompt: He was walking
+Generated: He was walking on a journey. It was a new way of saying, "What do you do?." It would be pretty cool, right? It's all about going on!
+
+Max looked at the middle of the West"I've learned about "What do people do today?" she asked, "Well, why do people talk about different ways to use physical activities, which are important for everyone to wear and talk to others, even when they go away or try out with them to understand your emotions
+--------------------------------------------------
+
+Prompt: Music is a
+Generated: Music is a fundamental aspect of a system. It provides an image with a wide range of data, which are a type of numbers that creates a range of times, which is known as the "tune behavior." This is a type of activity that allows us to understand a lot, shape, and texture and shape, shape and shape. It allows us to determine how a signal is applied to measure the effect of the image.
+
+Let's start with the concept of an example. Imagine you want to know that
+```
 
