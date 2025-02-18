@@ -1,1 +1,5 @@
 references/
+deepseek.ckpt
+events.out.tfevents.*
+hparams.yaml
+learning_rate_schedule.png
