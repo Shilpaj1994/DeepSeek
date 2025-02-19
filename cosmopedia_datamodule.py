@@ -2,7 +2,7 @@
 """
 Data module for Cosmopedia dataset
 Author: Shilpaj Bhalerao
-Date: 2025-01-20
+Date: Jan 20, 2025
 """
 # Standard Library Imports
 from typing import Optional

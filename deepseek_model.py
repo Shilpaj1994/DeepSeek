@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 """
-SmollmV2 model implementation
+DeepSeek model implementation
 Author: Shilpaj Bhalerao
-Date: 2025-01-19
+Date: Feb 07, 2025
 """
 # Third-Party Imports
 import torch
@@ -19,6 +19,9 @@ class LatentAttention(nn.Module):
     Modified RoPE implementation for latent attention
     """
     def __init__(self, head_dim, kv_dim, config: LatentAttentionConfig):
+        """
+        Initialize the LatentAttention class
+        """
         super().__init__()
         self.head_dim = head_dim
         self.kv_dim = kv_dim
@@ -30,18 +33,26 @@ class LatentAttention(nn.Module):
         self.register_buffer('inv_freq', inv_freq)
     
     def _rotate_half(self, x):
-        """Rotates half the hidden dims of the input."""
+        """
+        Rotates half the hidden dims of the input.
+        """
         x1 = x[..., :x.shape[-1] // 2]
         x2 = x[..., x.shape[-1] // 2:]
         return torch.cat((-x2, x1), dim=-1)
-        
+
     def _apply_rope(self, x, seq_len):
+        """
+        Applies Rope to the input
+        """
         t = torch.arange(seq_len, device=x.device).type_as(self.inv_freq)
         freqs = torch.einsum('i,j->ij', t, self.inv_freq)
         emb = torch.cat((freqs, freqs), dim=-1)
         return emb.cos()[None, None, :, :], emb.sin()[None, None, :, :]
 
     def forward(self, q, k):
+        """
+        Applies Rope to the input
+        """
         seq_len = q.shape[2]
         cos, sin = self._apply_rope(k, seq_len)
         
@@ -56,7 +67,13 @@ class LatentAttention(nn.Module):
 
 
 class MultiHeadLatentAttention(nn.Module):
+    """
+    Multi-head latent attention
+    """
     def __init__(self, config: DeepSeekConfig):
+        """
+        Initialize the MultiHeadLatentAttention class
+        """
         super().__init__()
         self.hidden_size = config.hidden_size
         self.num_heads = config.num_attention_heads
@@ -82,6 +99,9 @@ class MultiHeadLatentAttention(nn.Module):
         self.o_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
     def forward(self, x):
+        """
+        Forward pass for the MultiHeadLatentAttention class
+        """
         B, T, _ = x.size()
         
         # Project to latent space
@@ -113,7 +133,13 @@ class MultiHeadLatentAttention(nn.Module):
 
 
 class DeepSeekExpert(nn.Module):
+    """
+    DeepSeek expert
+    """
     def __init__(self, hidden_size, intermediate_size):
+        """
+        Initialize the DeepSeekExpert class
+        """
         super().__init__()
         self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
         self.up_proj = nn.Linear(hidden_size, intermediate_size, bias=False)
@@ -121,11 +147,20 @@ class DeepSeekExpert(nn.Module):
         self.act = nn.SiLU()
 
     def forward(self, x):
+        """
+        Forward pass for the DeepSeekExpert class
+        """
         return self.down_proj(self.act(self.gate_proj(x)) * self.up_proj(x))
 
 
 class DeepSeekMoE(nn.Module):
+    """
+    DeepSeek MoE
+    """
     def __init__(self, config: DeepSeekConfig):
+        """
+        Initialize the DeepSeekMoE class
+        """
         super().__init__()
         self.hidden_size = config.hidden_size
         self.num_experts = config.num_experts
@@ -149,6 +184,9 @@ class DeepSeekMoE(nn.Module):
         self.expert_load = None
 
     def forward(self, x):
+        """
+        Forward pass for the DeepSeekMoE class
+        """
         # Get input shape
         original_shape = x.shape
         x = x.view(-1, self.hidden_size)  # Reshape to (batch_size * seq_len, hidden_size)
@@ -201,7 +239,9 @@ class DeepSeekMoE(nn.Module):
         return combined_out
 
     def update_bias_terms(self, expert_load):
-        """Update routing biases based on expert load"""
+        """
+        Update routing biases based on expert load
+        """
         target_load = 1.0 / len(self.routed_experts)
         load_diff = expert_load - target_load
         with torch.no_grad():
@@ -209,11 +249,20 @@ class DeepSeekMoE(nn.Module):
 
 
 class MOEFeedForward(nn.Module):
+    """
+    MOE feed forward
+    """
     def __init__(self, config: DeepSeekConfig):
+        """
+        Initialize the MOEFeedForward class
+        """
         super().__init__()
         self.moe = DeepSeekMoE(config)
         
     def forward(self, x):
+        """
+        Forward pass for the MOEFeedForward class
+        """
         return self.moe(x)
 
 
@@ -222,6 +271,9 @@ class DeepSeekBlock(nn.Module):
     Transformer block
     """
     def __init__(self, config: DeepSeekConfig):
+        """
+        Initialize the DeepSeekBlock class
+        """
         super().__init__()
         self.ln_1 = nn.LayerNorm(config.hidden_size, bias=False)
         self.attn = MultiHeadLatentAttention(config)
@@ -229,6 +281,9 @@ class DeepSeekBlock(nn.Module):
         self.mlp = MOEFeedForward(config)
 
     def forward(self, x):
+        """
+        Forward pass for the DeepSeekBlock class
+        """
         x = x + self.attn(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
         return x
@@ -239,6 +294,9 @@ class DeepSeekLM(nn.Module):
     DeepSeekLM model
     """
     def __init__(self, config=DeepSeekConfig()):
+        """
+        Initialize the DeepSeekLM class
+        """
         super().__init__()
         self.config = config
         
@@ -263,6 +321,9 @@ class DeepSeekLM(nn.Module):
             self.use_flash_attention = False
 
     def _init_weights(self, module):
+        """
+        Initialize the weights of the model
+        """
         if isinstance(module, nn.Linear):
             std = 0.02
             if hasattr(module, 'NANGPT_SCALE_INIT'):
@@ -274,6 +335,9 @@ class DeepSeekLM(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0.0, std = 0.04)
 
     def forward(self, idx, targets=None):
+        """
+        Forward pass for the DeepSeekLM class
+        """
         # idx is of shape (B, T)
         B, T = idx.size()
         assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is only {self.config.block_size}"

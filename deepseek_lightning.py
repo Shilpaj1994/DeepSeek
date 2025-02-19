@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """
-Lightning module for SmollmV2 model training
+Lightning module for DeepSeekLM model training
+Author: Shilpaj Bhalerao
+Date: Feb 07, 2025
 """
 
 # Standard Library Imports
@@ -26,6 +28,7 @@ from deepseek_config import (DeepSeekConfig, OptimizerConfig, CheckpointConfig,
                    LoggingConfig, TrainerConfig)
 from deepseek_model import DeepSeekLM, DeepSeekMoE
 from cosmopedia_datamodule import CosmopediaDataModule
+
 
 class LitDeepSeekLM(pl.LightningModule):
     """
@@ -93,12 +96,16 @@ class LitDeepSeekLM(pl.LightningModule):
         self.interupt_steps = interupt_steps
         
     def on_load_checkpoint(self, checkpoint):
-        """Restore iter_num when loading from checkpoint"""
+        """
+        Restore iter_num when loading from checkpoint
+        """
         if 'iter_num' in checkpoint:
             self.iter_num = checkpoint['iter_num']
     
     def on_save_checkpoint(self, checkpoint):
-        """Save iter_num in checkpoint"""
+        """
+        Save iter_num in checkpoint
+        """
         checkpoint['iter_num'] = self.iter_num
         
     def forward(self, x, targets=None):
@@ -151,7 +158,7 @@ class LitDeepSeekLM(pl.LightningModule):
             self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
             self.log('lr', self.trainer.optimizers[0].param_groups[0]['lr'], on_step=True)
             
-            # Generate sample prediction
+            # Generate sample prediction after certain number of steps
             if self.iter_num % LoggingConfig.generate_every == 0:
                 # Get a sample input from the batch
                 context_length = DeepSeekConfig.context_length  # Number of tokens to use as context
@@ -309,13 +316,17 @@ class LitDeepSeekLM(pl.LightningModule):
         self.iter_time = 0.0
 
     def _update_moe_biases(self):
-        """Update MoE routing biases based on expert utilization"""
+        """
+        Update MoE routing biases based on expert utilization
+        """
         for module in self.model.modules():
             if isinstance(module, DeepSeekMoE) and module.expert_load is not None:
                 module.update_bias_terms(module.expert_load)
 
     def on_train_batch_end(self, outputs, batch, batch_idx):
-        """Matches reference update pattern"""
+        """
+        Matches reference update pattern
+        """
         # Update every 100 steps to prevent over-adjustment
         if self.global_step % 100 == 0:
             with torch.no_grad():
